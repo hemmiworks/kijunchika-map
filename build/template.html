@@ -1,0 +1,521 @@
+<title>基準地価マップ __YEAR__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@700;900&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>/*__MAPLIBRE_CSS__*/</style>
+<style>
+:root{
+  --sea:#e4eaee; --land:#fbfbf9; --pref-line:#aab3ba; --muni-line:#e3e7ea;
+  --ink:#18212c; --muted:#5b6672; --faint:#8a949e;
+  --panel:#ffffff; --panel-2:#f3f5f7; --rule:#e1e5e9;
+  --accent:#3144a6; --accent-soft:#e6e9f7;
+  --pt-stroke:rgba(255,255,255,.85); --sel:#111a24;
+  --up:#c8453a; --down:#2f73b5; --flat:#8d949b;
+  --shadow:0 6px 24px rgba(20,30,45,.14);
+  --f-ui:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;
+  --f-disp:"Zen Kaku Gothic New","IBM Plex Sans JP","Hiragino Sans",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"Consolas",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --sea:#0c1116; --land:#19212a; --pref-line:#45525e; --muni-line:#232c36;
+    --ink:#e5e9ee; --muted:#9aa5b0; --faint:#6e7985;
+    --panel:#131920; --panel-2:#1b232c; --rule:#29323c;
+    --accent:#93a2f2; --accent-soft:#232c4a;
+    --pt-stroke:rgba(10,14,20,.8); --sel:#ffffff;
+    --up:#ec7a6c; --down:#6ea8e0; --flat:#7c858e;
+    --shadow:0 6px 24px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --sea:#0c1116; --land:#19212a; --pref-line:#45525e; --muni-line:#232c36;
+  --ink:#e5e9ee; --muted:#9aa5b0; --faint:#6e7985;
+  --panel:#131920; --panel-2:#1b232c; --rule:#29323c;
+  --accent:#93a2f2; --accent-soft:#232c4a;
+  --pt-stroke:rgba(10,14,20,.8); --sel:#ffffff;
+  --up:#ec7a6c; --down:#6ea8e0; --flat:#7c858e;
+  --shadow:0 6px 24px rgba(0,0,0,.5);
+}
+html,body{height:100%}
+body{background:var(--panel);color:var(--ink);font:14px/1.6 var(--f-ui);overflow:hidden}
+.app{height:100%;display:grid;grid-template-columns:372px 1fr}
+aside{background:var(--panel);border-right:1px solid var(--rule);overflow-y:auto;display:flex;flex-direction:column;gap:18px;padding:18px 18px 22px;min-width:0}
+#map{position:relative;background:var(--sea);min-height:0}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+header h1{font:900 24px/1.2 var(--f-disp);margin:0;letter-spacing:.02em;text-wrap:balance}
+header h1 small{font:700 13px var(--f-num);color:var(--accent);margin-left:6px;letter-spacing:0}
+header p{margin:4px 0 0;color:var(--muted);font-size:12.5px}
+.label{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);margin:0 0 6px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--panel-2);border-radius:8px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;color:var(--muted);font:500 13px var(--f-ui);padding:6px 4px;border-radius:6px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--rule);background:var(--panel);color:var(--muted);font:500 12.5px var(--f-ui);padding:4px 10px;border-radius:99px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.chip .n{font:500 11px var(--f-num);color:var(--faint)}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{margin:6px 0 0;font-size:11.5px;color:var(--muted);line-height:1.5}
+.controls{display:flex;flex-direction:column;gap:14px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;padding:14px;background:var(--panel-2);border-radius:10px}
+.stat .k{font-size:11.5px;color:var(--muted)}
+.stat .v{font:500 20px/1.25 var(--f-num);font-variant-numeric:tabular-nums}
+.stat .v em{font-style:normal;font-size:12px;color:var(--muted);margin-left:2px}
+.bar{grid-column:1/-1}
+.bar .track{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--rule)}
+.bar .track span{display:block;height:100%}
+.bar .keys{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:5px}
+.bar .keys b{font:500 11.5px var(--f-num);color:var(--ink);margin-left:3px}
+.search input{width:100%;box-sizing:border-box;border:1px solid var(--rule);background:var(--panel);color:var(--ink);font:14px var(--f-ui);padding:8px 10px;border-radius:8px}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.list li button{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:baseline;padding:7px 4px;border-bottom:1px solid var(--rule);cursor:pointer}
+.list li button:hover{background:var(--panel-2)}
+.list li button:focus-visible{outline:2px solid var(--accent)}
+.list .rk{font:500 11px var(--f-num);color:var(--faint);text-align:right}
+.list .nm{min-width:0}
+.list .nm b{font-weight:500;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list .nm span{font-size:11.5px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list .val{font:500 13px var(--f-num);text-align:right;white-space:nowrap}
+.up{color:var(--up)} .down{color:var(--down)}
+.empty{color:var(--muted);font-size:12.5px;padding:6px 2px}
+/* detail */
+.detail{border:1px solid var(--rule);border-radius:12px;padding:14px 14px 10px;background:var(--panel);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px}
+.detail .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.detail .id{font:500 12px var(--f-num);color:var(--accent)}
+.detail h2{margin:2px 0 0;font:700 16px/1.4 var(--f-ui);text-wrap:balance}
+.detail .close{border:0;background:var(--panel-2);color:var(--muted);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;flex:none}
+.detail .big{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.detail .price{font:500 26px/1.1 var(--f-num)}
+.detail .price em{font:400 12px var(--f-ui);color:var(--muted);font-style:normal;margin-left:3px}
+.detail .chg{font:500 15px var(--f-num)}
+.detail dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:0;font-size:12.5px}
+.detail dt{color:var(--muted)} .detail dd{margin:0}
+.chart svg{display:block;width:100%;height:auto}
+.chart .cap{font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+footer a,.detail a{color:var(--accent)}
+footer{margin-top:auto;font-size:11px;color:var(--faint);line-height:1.55}
+/* map overlays */
+.legend{position:absolute;z-index:2;left:12px;bottom:12px;background:var(--panel);color:var(--ink);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow);font-size:11.5px;max-width:calc(100% - 24px);box-sizing:border-box}
+.legend .t{font-weight:700;margin-bottom:6px}
+.legend .sw{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px}
+.legend .sw div{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:26px}
+.legend .sw span{display:block;width:100%;height:10px;border-radius:2px}
+.legend .sw i{font:500 10px var(--f-num);font-style:normal;color:var(--muted);white-space:nowrap}
+.tip{position:absolute;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--rule);border-radius:8px;padding:6px 9px;font-size:12px;box-shadow:var(--shadow);white-space:nowrap;z-index:5;transform:translate(12px,-50%)}
+.tip b{font-weight:500}
+.tip .num{margin-left:6px}
+.maplibregl-ctrl-group{background:var(--panel)!important}
+.maplibregl-ctrl-group button{filter:none}
+:root[data-theme="dark"] .maplibregl-ctrl-group button span{filter:invert(1)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .maplibregl-ctrl-group button span{filter:invert(1)}}
+.loading{position:absolute;z-index:2;inset:0;display:grid;place-items:center;color:var(--muted);font-size:13px;pointer-events:none}
+@media (max-width:760px){
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;grid-template-rows:56vh auto;height:auto}
+  #map{grid-row:1;height:56vh}
+  aside{grid-row:2;border-right:0;border-top:1px solid var(--rule);overflow:visible;padding:16px}
+  .legend .sw div{min-width:21px}
+  .legend .sw i{font-size:9px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+
+<div class="app">
+  <aside id="side">
+    <header>
+      <h1>基準地価マップ<small>__YEAR__</small></h1>
+      <p>__WAREKI__ 都道府県地価調査（7月1日時点）全国 <span class="num" id="total"></span> 地点</p>
+    </header>
+
+    <section id="detailWrap" hidden></section>
+
+    <section class="controls" aria-label="表示設定">
+      <div>
+        <p class="label">色分け</p>
+        <div class="seg" role="group" aria-label="色分け">
+          <button id="m-chg" aria-pressed="true">単年変動率</button>
+          <button id="m-c3" aria-pressed="false">3年平均</button>
+          <button id="m-price" aria-pressed="false">価格</button>
+        </div>
+        <p class="hint" id="modeHint"></p>
+      </div>
+      <div>
+        <p class="label">集計単位</p>
+        <div class="seg" role="group" aria-label="集計単位">
+          <button id="v-pt" aria-pressed="true">地点</button>
+          <button id="v-pref" aria-pressed="false">都道府県（中央値）</button>
+        </div>
+      </div>
+      <div id="bmWrap" hidden>
+        <p class="label">背景地図（地理院タイル）</p>
+        <div class="seg" role="group" aria-label="背景地図">
+          <button id="b-pale" aria-pressed="true">淡色</button>
+          <button id="b-std" aria-pressed="false">標準</button>
+          <button id="b-photo" aria-pressed="false">写真</button>
+          <button id="b-none" aria-pressed="false">なし</button>
+        </div>
+      </div>
+      <div>
+        <p class="label">用途区分</p>
+        <div class="chips" id="uses"></div>
+      </div>
+    </section>
+
+    <section class="stats" id="stats" aria-label="選択中の用途の集計"></section>
+
+    <section class="search">
+      <p class="label">地点をさがす</p>
+      <input id="q" type="search" placeholder="住所・駅名・市区町村（例：銀座、ニセコ）" autocomplete="off">
+      <ul class="list" id="qres"></ul>
+    </section>
+
+    <section>
+      <div class="seg" role="group" aria-label="ランキング">
+        <button id="r-price" aria-pressed="true">価格 上位</button>
+        <button id="r-up" aria-pressed="false">上昇率 上位</button>
+        <button id="r-down" aria-pressed="false">下落率 上位</button>
+      </div>
+      <ul class="list" id="rank" style="margin-top:6px"></ul>
+    </section>
+
+    <footer>
+      出典：「国土数値情報（都道府県地価調査データ）」（国土交通省）を加工して作成。行政界：国土地理院「地球地図日本」（第2.2版）を加工して作成。<span id="bmCredit" hidden>背景：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）。</span>地図描画：<a href="https://github.com/maplibre/maplibre-gl-js/blob/main/LICENSE.txt" target="_blank" rel="noopener">MapLibre GL JS</a>（BSD-3-Clause）。<br><br>この地図は公表データを個人が加工したもので、国や都道府県の公式統計ではありません。基準地価は各基準地の標準的な価格で、実際の取引価格や個別の土地の評価額を示すものではありません。平均・中央値・3年平均はこの地図独自の集計で、公表値とは集計方法が異なります。地点番号は略記です。
+    </footer>
+  </aside>
+  <div id="map">
+    <div class="loading" id="loading">地図を準備しています…</div>
+    <div class="legend" id="legend"></div>
+    <div class="tip" id="tip" hidden></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script>
+const BASEMAP = /*__BASEMAP__*/false;
+const D = /*__DATA__*/null;
+const PREF_GEO = /*__PREF__*/null;
+const MUNI_LINES = /*__MUNI__*/null;
+
+const USE_NAMES = {0:"住宅地",3:"宅地見込地",5:"商業地",9:"工業地",10:"調整区域内宅地",20:"林地"};
+const USE_ORDER = [0,5,9,3,20,10];
+const N = D.x.length;
+const Y0 = D.y0, YN = D.year;
+
+// ---- decode price history ----
+function hist(i){
+  const s = D.h[i]; if(!s) return [];
+  const [a,b] = s.split(":"); const start = parseInt(a,36);
+  return b.split(",").map((t,k)=>({y:Y0+start+k, v: t==="" ? 0 : t[0]==="~" ? parseInt(t.slice(1),36) : parseInt(t,36)*100}));
+}
+const cont = new Uint8Array(N); // continuing point (has previous-year price)
+for(let i=0;i<N;i++){ const h=hist(i); cont[i] = h.length>1 && h[h.length-2].v>0 ? 1 : 0; }
+
+// 3年平均変動率：YN-3→YN年の年率（複利）。4年とも価格がある地点のみ
+const C3 = new Float64Array(N).fill(NaN);
+for(let i=0;i<N;i++){ const h=hist(i), g=y=>(h.find(d=>d.y===y)||{v:0}).v; const a=g(YN-3), b=g(YN);
+  if(a>0 && b>0 && g(YN-2)>0 && g(YN-1)>0) C3[i]=(Math.pow(b/a,1/3)-1)*100; }
+const is3 = () => st.mode==="c3";
+const hasR = i => is3() ? !isNaN(C3[i]) : !!cont[i];
+const rate = i => is3() ? C3[i] : D.c[i];
+const RATE_NAME = () => is3() ? `3年平均変動率（${YN-3}→${YN}年、年率）` : "前年比変動率";
+
+const pc = i => D.city[i].slice(0,2);
+const prefOf = i => D.prefName[pc(i)];
+function code(i){ const u=D.u[i]; return D.cn[i] + (u===0?"":u===20?"(林)":u===10?"(調)":u) + "-" + D.seq[i]; }
+const yen = v => v.toLocaleString("ja-JP");
+function pct(c){ const s=(c>0?"+":c<0?"−":"±")+Math.abs(c).toFixed(1)+"%"; return s; }
+const cls = c => c>0?"up":c<0?"down":"";
+
+// ---- state ----
+const st = { bm: BASEMAP?"pale":"none", mode:"chg", view:"pt", uses:new Set([0,5,9,3,20,10]), rank:"price", sel:-1 };
+
+// ---- colors ----
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function isDark(){ const t=document.documentElement.dataset.theme; return t ? t==="dark" : matchMedia("(prefers-color-scheme: dark)").matches; }
+const CHG_STOPS = [-5,-2,-0.5,0,0.5,2,5,10,20];
+function chgColors(){ return isDark()
+  ? ["#3b82c4","#6fa8dc","#9dbbd6","#6d747b","#e8b89c","#ef8f6e","#f0604e","#f53d7a","#ff7ad9"]
+  : ["#1f5fa6","#4e94c8","#a9c9e2","#b3b7bb","#f4c4a4","#ea8a5f","#d4452f","#a3122e","#5c0a3f"]; }
+const PRICE_STOPS = [3.3,4,4.5,5,5.5,6,6.6,7.2]; // log10(円/㎡)
+function priceColors(){ return isDark()
+  ? ["#1f2e5c","#27508f","#1f7fb0","#23a6b2","#5cc79e","#aee07a","#f4ef6a","#fffbd2"]
+  : ["#d4ecd6","#9fd6c1","#5bbcc3","#2b93bf","#2366a8","#26398f","#241a66","#12062e"]; }
+function ramp(stops, cols, key){ const e=["interpolate",["linear"],key]; stops.forEach((s,k)=>e.push(s,cols[k])); return e; }
+function colorFor(v, stops, cols){
+  if(v<=stops[0]) return cols[0];
+  for(let k=1;k<stops.length;k++) if(v<=stops[k]){
+    const t=(v-stops[k-1])/(stops[k]-stops[k-1]); return mix(cols[k-1],cols[k],t);
+  }
+  return cols[cols.length-1];
+}
+function mix(a,b,t){ const p=h=>[1,3,5].map(k=>parseInt(h.slice(k,k+2),16)); const A=p(a),B=p(b);
+  return "#"+A.map((x,k)=>Math.round(x+(B[k]-x)*t).toString(16).padStart(2,"0")).join(""); }
+
+// ---- GeoJSON for points ----
+const ptGeo = {type:"FeatureCollection",features:new Array(N)};
+for(let i=0;i<N;i++){
+  ptGeo.features[i] = {type:"Feature",id:i,geometry:{type:"Point",coordinates:[D.x[i],D.y[i]]},
+    properties:{i, u:D.u[i], c:D.c[i], lp:Math.log10(D.p[i]), k:Math.abs(D.c[i]), h3:!isNaN(C3[i]), c3:isNaN(C3[i])?0:+C3[i].toFixed(2), k3:isNaN(C3[i])?-1:Math.abs(C3[i])}};
+}
+PREF_GEO.features = PREF_GEO.features.filter(f=>D.prefName[f.properties.pref]);
+
+// ---- map ----
+const map = new maplibregl.Map({
+  container:"map",
+  style:{version:8,sources:{},layers:[{id:"bg",type:"background",paint:{"background-color":css("--sea")}}]},
+  center:[137.5,37.6], zoom:4.6,
+  attributionControl: BASEMAP ? {compact:true, customAttribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>'} : false, maxZoom:17, minZoom:3.5, dragRotate:false, pitchWithRotate:false
+});
+map.touchZoomRotate.disableRotation();
+map.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
+map.addControl(new maplibregl.ScaleControl({unit:"metric"}),"bottom-right");
+
+let ready=false;
+const HOME=[[128.3,30.6],[146.2,45.6]];
+map.on("load",()=>{
+  ready=true;
+  document.getElementById("loading").remove();
+  map.fitBounds(HOME,{padding:20,animate:false});
+  map.addSource("pref",{type:"geojson",data:PREF_GEO,promoteId:"pref"});
+  map.addSource("muni",{type:"geojson",data:MUNI_LINES});
+  map.addSource("pts",{type:"geojson",data:ptGeo});
+  map.addSource("sel",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+  map.addLayer({id:"land",type:"fill",source:"pref",paint:{"fill-color":css("--land")}});
+  if(BASEMAP) for(const [id,ext,mz] of GSI){
+    map.addSource("gsi-"+id,{type:"raster",tiles:[`https://cyberjapandata.gsi.go.jp/xyz/${id}/{z}/{x}/{y}.${ext}`],tileSize:256,minzoom:2,maxzoom:mz});
+    map.addLayer({id:"gsi-"+id,type:"raster",source:"gsi-"+id,layout:{visibility:"none"}});
+  }
+  map.addLayer({id:"choro",type:"fill",source:"pref",layout:{visibility:"none"},
+    paint:{"fill-color":["coalesce",["feature-state","col"],css("--land")],"fill-opacity":.92}});
+  map.addLayer({id:"muni",type:"line",source:"muni",minzoom:6,paint:{"line-color":css("--muni-line"),"line-width":.7}});
+  map.addLayer({id:"prefline",type:"line",source:"pref",paint:{"line-color":css("--pref-line"),"line-width":["interpolate",["linear"],["zoom"],4,.5,9,1.4]}});
+  map.addLayer({id:"prefhover",type:"line",source:"pref",paint:{"line-color":css("--sel"),"line-width":["case",["boolean",["feature-state","hover"],false],2,0]}});
+  map.addLayer({id:"pts",type:"circle",source:"pts",
+    layout:{"circle-sort-key":["get","k"]},
+    paint:{"circle-radius":["interpolate",["linear"],["zoom"],4,1.6,7,3,10,5.5,14,8],
+      "circle-stroke-width":["interpolate",["linear"],["zoom"],5,0,8,.6,12,1],
+      "circle-stroke-color":css("--pt-stroke")}});
+  map.addLayer({id:"selring",type:"circle",source:"sel",paint:{"circle-radius":["interpolate",["linear"],["zoom"],4,7,12,13],"circle-color":"rgba(0,0,0,0)","circle-stroke-width":2.5,"circle-stroke-color":css("--sel")}});
+  applyBasemap();
+  applyAll();
+  bindMap();
+});
+
+const GSI=[["pale","png",18],["std","png",18],["seamlessphoto","jpg",18]];
+const BM_ID={pale:"pale",std:"std",photo:"seamlessphoto"};
+function applyBasemap(){
+  if(!ready || !BASEMAP) return;
+  const on=st.bm!=="none", dark=isDark();
+  for(const [id] of GSI){
+    const vis = BM_ID[st.bm]===id;
+    map.setLayoutProperty("gsi-"+id,"visibility",vis?"visible":"none");
+    if(id!=="seamlessphoto"){ // 暗い画面では淡色・標準の明度を反転して沈める
+      map.setPaintProperty("gsi-"+id,"raster-brightness-min",dark?.9:0);
+      map.setPaintProperty("gsi-"+id,"raster-brightness-max",dark?.08:1);
+      map.setPaintProperty("gsi-"+id,"raster-saturation",dark?-.6:0);
+    }
+  }
+  map.setLayoutProperty("land","visibility",on?"none":"visible");
+  map.setLayoutProperty("muni","visibility",on?"none":"visible");
+  map.setPaintProperty("prefline","line-opacity",st.bm==="photo"?.9:on?.6:1);
+}
+function applyTheme(){
+  if(!ready) return;
+  map.setPaintProperty("bg","background-color",css("--sea"));
+  map.setPaintProperty("land","fill-color",css("--land"));
+  map.setPaintProperty("muni","line-color",css("--muni-line"));
+  map.setPaintProperty("prefline","line-color",css("--pref-line"));
+  map.setPaintProperty("prefhover","line-color",css("--sel"));
+  map.setPaintProperty("pts","circle-stroke-color",css("--pt-stroke"));
+  map.setPaintProperty("selring","circle-stroke-color",css("--sel"));
+  map.setPaintProperty("choro","fill-color",["coalesce",["feature-state","col"],css("--land")]);
+  applyBasemap();
+  applyAll();
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+function applyAll(){
+  const uses=[...st.uses];
+  if(ready){
+    map.setFilter("pts",["in",["get","u"],["literal",uses]]);
+    map.setPaintProperty("pts","circle-color", st.mode==="chg" ? ramp(CHG_STOPS,chgColors(),["get","c"])
+      : is3() ? ["case",["get","h3"],ramp(CHG_STOPS,chgColors(),["get","c3"]),css("--flat")]
+      : ramp(PRICE_STOPS,priceColors(),["get","lp"]));
+    map.setPaintProperty("pts","circle-opacity", is3() ? ["case",["get","h3"],1,.35] : 1);
+    map.setLayoutProperty("pts","circle-sort-key", st.mode==="chg"?["get","k"]:is3()?["get","k3"]:["get","lp"]);
+    map.setLayoutProperty("pts","visibility", st.view==="pt"?"visible":"none");
+    map.setLayoutProperty("choro","visibility", st.view==="pref"?"visible":"none");
+    if(st.view==="pref") paintPrefs();
+  }
+  document.getElementById("modeHint").textContent = st.mode==="chg" ? `${YN-1}年→${YN}年の1年間の変動率（公表値）`
+    : is3() ? `${YN-3}年→${YN}年の3年間を年率に直した変動率。${YN-3}年以降毎年調査されている地点のみ（灰色は対象外）`
+    : `${YN}年7月1日時点の価格（円/㎡）`;
+  renderLegend(); renderStats(); renderRank(); renderSearch();
+  if(st.sel>=0) renderDetail();
+}
+
+// ---- prefecture aggregation ----
+function median(a){ if(!a.length) return null; a=a.slice().sort((x,y)=>x-y); const m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+let prefAgg = {};
+function aggPrefs(){
+  const by={};
+  for(let i=0;i<N;i++){ if(!st.uses.has(D.u[i])) continue; const p=pc(i); (by[p] ||= {c:[],p:[],n:0}); by[p].n++; by[p].p.push(D.p[i]); if(hasR(i)) by[p].c.push(rate(i)); }
+  prefAgg={}; for(const p in by) prefAgg[p]={n:by[p].n, c:median(by[p].c), p:median(by[p].p)};
+}
+function paintPrefs(){
+  aggPrefs();
+  const cc=chgColors(), pcol=priceColors();
+  for(const f of PREF_GEO.features){ const p=f.properties.pref, a=prefAgg[p];
+    const col = !a ? null : st.mode!=="price" ? (a.c==null?null:colorFor(a.c,CHG_STOPS,cc)) : colorFor(Math.log10(a.p),PRICE_STOPS,pcol);
+    map.setFeatureState({source:"pref",id:p},{col});
+  }
+}
+
+// ---- legend ----
+function renderLegend(){
+  const el=document.getElementById("legend");
+  const agg = st.view==="pref" ? "（都道府県の中央値）" : "";
+  if(st.mode!=="price"){
+    const cols=chgColors();
+    el.innerHTML=`<div class="t">${RATE_NAME()}${agg}</div>`+swatches(cols,["−5","−2","−0.5","0","+0.5","+2","+5","+10","+20%"]);
+  }else{
+    const cols=priceColors();
+    el.innerHTML=`<div class="t">価格 円/㎡${agg}</div>`+swatches(cols,["2千","1万","3万","10万","30万","100万","400万","1600万"]);
+  }
+}
+
+function swatches(cols,labels){
+  return `<div class="sw">${cols.map((c,k)=>`<div><span style="background:${c}"></span><i>${labels[k]}</i></div>`).join("")}</div>`;
+}
+
+// ---- stats ----
+function sel(){ const r=[]; for(let i=0;i<N;i++) if(st.uses.has(D.u[i])) r.push(i); return r; }
+function renderStats(){
+  const ids=sel(); let up=0,fl=0,dn=0,sum=0,nc=0; const prices=[];
+  for(const i of ids){ prices.push(D.p[i]); if(!hasR(i)) continue; const c=rate(i); nc++; sum+=c; if(c>=0.05)up++; else if(c<=-0.05)dn++; else fl++; }
+  const avg = nc? sum/nc : 0, med=median(prices)||0, T=up+fl+dn||1;
+  document.getElementById("stats").innerHTML=`
+    <div class="stat"><div class="k">地点数</div><div class="v">${yen(ids.length)}</div></div>
+    <div class="stat"><div class="k">${is3()?"3年平均変動率（年率）":"平均変動率"}</div><div class="v ${cls(avg)}">${pct(avg)}</div></div>
+    <div class="stat"><div class="k">価格の中央値</div><div class="v">${yen(Math.round(med))}<em>円/㎡</em></div></div>
+    <div class="stat"><div class="k">${is3()?"算出対象の地点":"継続地点"}</div><div class="v">${yen(nc)}</div></div>
+    <div class="bar"><div class="track">
+      <span style="width:${up/T*100}%;background:var(--up)"></span><span style="width:${fl/T*100}%;background:var(--flat)"></span><span style="width:${dn/T*100}%;background:var(--down)"></span></div>
+      <div class="keys"><span>上昇<b>${yen(up)}</b></span><span>横ばい<b>${yen(fl)}</b></span><span>下落<b>${yen(dn)}</b></span></div></div>`;
+}
+
+// ---- lists ----
+function item(i,rank,val){ return `<li><button data-i="${i}"><span class="rk">${rank??""}</span><span class="nm"><b>${prefOf(i)} ${D.adr[i].replace(/[０-９]+番.*$/,"")}</b><span>${code(i)}・${USE_NAMES[D.u[i]]}${D.st[i]?"・"+D.st[i]:""}</span></span><span class="val ${val.c||""}">${val.t}</span></button></li>`; }
+function renderRank(){
+  let ids=sel();
+  if(st.rank==="price") ids.sort((a,b)=>D.p[b]-D.p[a]);
+  else { ids=ids.filter(hasR); ids.sort(st.rank==="up"?(a,b)=>rate(b)-rate(a):(a,b)=>rate(a)-rate(b)); }
+  document.getElementById("rank").innerHTML = ids.slice(0,10).map((i,k)=>item(i,k+1,
+    st.rank==="price"?{t:yen(D.p[i])}:{t:pct(rate(i))+(is3()?"/年":""),c:cls(rate(i))})).join("");
+}
+const searchText = new Array(N); for(let i=0;i<N;i++) searchText[i]=(prefOf(i)+D.adr[i]+D.cn[i]+D.st[i]+code(i)).normalize("NFKC");
+function renderSearch(){
+  const q=document.getElementById("q").value.trim().normalize("NFKC"), el=document.getElementById("qres");
+  if(!q){ el.innerHTML=""; return; }
+  const terms=q.split(/\s+/); const r=[];
+  for(let i=0;i<N && r.length<200;i++) if(st.uses.has(D.u[i]) && terms.every(t=>searchText[i].includes(t))) r.push(i);
+  r.sort((a,b)=>D.p[b]-D.p[a]);
+  el.innerHTML = r.length ? r.slice(0,12).map(i=>item(i,null,{t:yen(D.p[i])})).join("") + (r.length>12?`<li class="empty">ほか ${r.length>=200?"200+":r.length-12} 件（価格順に表示）</li>`:"")
+    : `<li class="empty">「${q.replace(/[<&]/g,"")}」に一致する地点はありません。用途区分の絞り込みも確認してください。</li>`;
+}
+document.getElementById("q").addEventListener("input",renderSearch);
+document.getElementById("side").addEventListener("click",e=>{ const b=e.target.closest("button[data-i]"); if(b) select(+b.dataset.i,true); });
+
+// ---- detail ----
+function chartSVG(h){
+  const W=320,H=130,L=44,R=8,T=10,B=20; const pts=h.filter(d=>d.v>0); if(pts.length<2) return "";
+  const max=Math.max(...pts.map(d=>d.v)); const nice=niceMax(max);
+  const x=y=>L+(y-Y0)/(YN-Y0)*(W-L-R), y=v=>T+(1-v/nice)*(H-T-B);
+  let d="",pen=false; for(const p of h){ if(!p.v){pen=false;continue;} d+=(pen?"L":"M")+x(p.y).toFixed(1)+","+y(p.v).toFixed(1); pen=true; }
+  const first=pts[0], last=pts[pts.length-1], peak=pts.reduce((a,b)=>b.v>a.v?b:a);
+  let area=""; // area only for continuous run ending at last point
+  let run=[]; for(let k=h.length-1;k>=0 && h[k].v;k--) run.unshift(h[k]);
+  if(run.length>1) area=`<path d="M${x(run[0].y)},${y(0)}`+run.map(p=>`L${x(p.y).toFixed(1)},${y(p.v).toFixed(1)}`).join("")+`L${x(run.at(-1).y)},${y(0)}Z" fill="var(--accent)" opacity=".1"/>`;
+  const grid=[0,.5,1].map(f=>{const v=nice*f;return `<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)"/><text x="${L-5}" y="${y(v)+3.5}" text-anchor="end" fill="var(--muted)" font-size="9.5" font-family="var(--f-num)">${short(v)}</text>`}).join("");
+  const xt=[1985,1995,2005,2015,2025].map(Y=>`<text x="${x(Y)}" y="${H-5}" text-anchor="middle" fill="var(--muted)" font-size="9.5" font-family="var(--f-num)">${Y}</text>`).join("");
+  const pk = peak!==last ? `<circle cx="${x(peak.y)}" cy="${y(peak.v)}" r="3" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.2"/><text x="${Math.min(x(peak.y)+5,W-60)}" y="${y(peak.v)+ (y(peak.v)<T+12?12:-5)}" fill="var(--ink)" font-size="9.5" font-family="var(--f-num)">最高 ${peak.y}</text>`:"";
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${first.y}年から${last.y}年の価格推移">${grid}${xt}${area}<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linejoin="round"/>${pk}<circle cx="${x(last.y)}" cy="${y(last.v)}" r="3.5" fill="var(--accent)"/></svg>`;
+}
+function niceMax(v){ const p=10**Math.floor(Math.log10(v)); for(const m of [1,1.2,1.5,2,2.5,3,4,5,6,8,10]) if(m*p>=v) return m*p; return 10*p; }
+function short(v){ if(v>=1e8) return (v/1e8)+"億"; if(v>=1e4) return (+(v/1e4).toFixed(1))+"万"; return yen(v); }
+function renderDetail(){
+  const w=document.getElementById("detailWrap"); const i=st.sel;
+  if(i<0){ w.hidden=true; w.innerHTML=""; return; }
+  const h=hist(i), pts=h.filter(d=>d.v>0), peak=pts.reduce((a,b)=>b.v>a.v?b:a,pts[0]||{v:0});
+  const vsPeak = peak && peak.v && peak.v!==D.p[i] ? `ピーク（${peak.y}年 ${yen(peak.v)}円）比 ${Math.round(D.p[i]/peak.v*100)}%` : pts.length>1 ? "調査開始以来の最高値" : "";
+  w.hidden=false;
+  w.innerHTML=`<div class="detail">
+    <div class="top"><div><div class="id">${code(i)}　${USE_NAMES[D.u[i]]}</div><h2>${prefOf(i)} ${D.adr[i]}</h2></div>
+      <button class="close" id="dclose" aria-label="詳細を閉じる">×</button></div>
+    <div class="big"><span class="price">${yen(D.p[i])}<em>円/㎡</em></span>
+      <span class="chg ${cont[i]?cls(D.c[i]):""}">${cont[i]?"前年比 "+pct(D.c[i]):"新規地点"}</span>
+      ${isNaN(C3[i])?"":`<span class="chg ${cls(C3[i])}">3年平均 ${pct(C3[i])}/年</span>`}</div>
+    <dl>
+      <dt>利用現況</dt><dd>${D.cur[i]}</dd>
+      <dt>地積</dt><dd class="num">${yen(D.area[i])} ㎡</dd>
+      ${D.st[i]?`<dt>最寄駅</dt><dd>${D.st[i]} <span class="num">${yen(D.sd[i])}</span> m</dd>`:""}
+      <dt>都市計画</dt><dd>${D.ku[i]}${D.zone[i]?"・"+D.zone[i]:""}</dd>
+      <dt>地図</dt><dd><a href="https://maps.gsi.go.jp/#17/${D.y[i]}/${D.x[i]}/&base=std&ls=std&disp=1&vs=c1g1j0h0k0l0u0t0z0r0s0m0f1" target="_blank" rel="noopener">地理院地図で開く</a></dd>
+    </dl>
+    ${pts.length>1?`<div class="chart"><div class="cap"><span>価格推移 円/㎡</span><span>${vsPeak}</span></div>${chartSVG(h)}</div>`:""}
+  </div>`;
+  document.getElementById("dclose").onclick=()=>select(-1);
+}
+function select(i,fly){
+  st.sel=i; renderDetail();
+  if(map.getSource("sel")) map.getSource("sel").setData({type:"FeatureCollection",features:i<0?[]:[{type:"Feature",geometry:{type:"Point",coordinates:[D.x[i],D.y[i]]},properties:{}}]});
+  if(i>=0){
+    if(fly){ if(st.view!=="pt") setView("pt"); if(!st.uses.has(D.u[i])){ st.uses.add(D.u[i]); renderUses(); applyAll(); }
+      map.flyTo({center:[D.x[i],D.y[i]],zoom:Math.max(map.getZoom(),13),essential:true,duration:matchMedia("(prefers-reduced-motion: reduce)").matches?0:1400}); }
+    document.getElementById("side").scrollTo({top:0,behavior:"smooth"});
+    if(innerWidth<=760 && !fly) document.getElementById("detailWrap").scrollIntoView({behavior:"smooth",block:"start"});
+  }
+}
+
+// ---- map interactions ----
+function bindMap(){
+  const tip=document.getElementById("tip");
+  map.on("mousemove","pts",e=>{ map.getCanvas().style.cursor="pointer"; const i=e.features[0].properties.i;
+    tip.hidden=false; tip.style.left=e.point.x+"px"; tip.style.top=e.point.y+"px";
+    tip.innerHTML=`<b>${code(i)}</b> ${USE_NAMES[D.u[i]]}<span class="num">${yen(D.p[i])}円</span><span class="num ${cont[i]?cls(D.c[i]):""}">${cont[i]?pct(D.c[i]):"新規"}</span>${isNaN(C3[i])?"":`<span class="num ${cls(C3[i])}">3年 ${pct(C3[i])}</span>`}`; });
+  map.on("mouseleave","pts",()=>{ map.getCanvas().style.cursor=""; tip.hidden=true; });
+  map.on("click","pts",e=>{ const f=e.features.sort((a,b)=>b.properties.k-a.properties.k)[0]; select(f.properties.i,false); });
+  let hov=null;
+  map.on("mousemove","choro",e=>{ const p=e.features[0].properties.pref; if(hov!==p){ if(hov) map.setFeatureState({source:"pref",id:hov},{hover:false}); hov=p; map.setFeatureState({source:"pref",id:p},{hover:true}); }
+    const a=prefAgg[p]; tip.hidden=false; tip.style.left=e.point.x+"px"; tip.style.top=e.point.y+"px";
+    tip.innerHTML = a ? `<b>${D.prefName[p]}</b><span class="num">${a.n}地点</span><span class="num ${cls(a.c)}">${a.c==null?"—":pct(a.c)}</span><span class="num">${yen(Math.round(a.p))}円</span>` : `<b>${D.prefName[p]}</b> 該当地点なし`; });
+  map.on("mouseleave","choro",()=>{ if(hov) map.setFeatureState({source:"pref",id:hov},{hover:false}); hov=null; tip.hidden=true; });
+  map.on("click","choro",e=>{ const f=e.features[0]; const b=new maplibregl.LngLatBounds();
+    const walk=c=>typeof c[0]==="number"?b.extend(c):c.forEach(walk); walk(f.geometry.coordinates);
+    setView("pt"); map.fitBounds(b,{padding:30,maxZoom:9}); });
+}
+
+// ---- controls ----
+const counts={}; for(let i=0;i<N;i++) counts[D.u[i]]=(counts[D.u[i]]||0)+1;
+function renderUses(){
+  document.getElementById("uses").innerHTML = USE_ORDER.filter(u=>counts[u]).map(u=>
+    `<button class="chip" data-u="${u}" aria-pressed="${st.uses.has(u)}">${USE_NAMES[u]}<span class="n">${yen(counts[u])}</span></button>`).join("");
+}
+document.getElementById("uses").addEventListener("click",e=>{ const b=e.target.closest("[data-u]"); if(!b) return; const u=+b.dataset.u;
+  if(st.uses.has(u) && st.uses.size===1) return; st.uses.has(u)?st.uses.delete(u):st.uses.add(u); renderUses(); applyAll(); });
+function segs(ids,key,fn){ ids.forEach(([id,val])=>document.getElementById(id).addEventListener("click",()=>{ fn(val); })); }
+function press(ids,val){ ids.forEach(([id,v])=>document.getElementById(id).setAttribute("aria-pressed",v===val)); }
+const MODE=[["m-chg","chg"],["m-c3","c3"],["m-price","price"]], VIEW=[["v-pt","pt"],["v-pref","pref"]], RANK=[["r-price","price"],["r-up","up"],["r-down","down"]];
+function setView(v){ st.view=v; press(VIEW,v); applyAll(); }
+segs(MODE,"mode",v=>{ st.mode=v; press(MODE,v); applyAll(); });
+segs(VIEW,"view",setView);
+const BM=[["b-pale","pale"],["b-std","std"],["b-photo","photo"],["b-none","none"]];
+if(BASEMAP){ document.getElementById("bmWrap").hidden=false; document.getElementById("bmCredit").hidden=false;
+  segs(BM,"bm",v=>{ st.bm=v; press(BM,v); applyBasemap(); }); }
+segs(RANK,"rank",v=>{ st.rank=v; press(RANK,v); renderRank(); });
+
+document.getElementById("total").textContent=yen(N);
+renderUses(); applyAll();
+</script>

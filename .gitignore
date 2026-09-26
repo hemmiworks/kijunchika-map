@@ -1,0 +1,14 @@
+# 元データ（fetch-data.sh で取得）
+data/
+# 中間ファイル・作業用
+build/data.json
+build/muni.geojson
+build/preview.html
+build/package/
+build/gm/
+build/*.png
+build/chrome-tmp/
+tools/
+node_modules/
+.claude/
+dist/
