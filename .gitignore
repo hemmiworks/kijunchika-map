@@ -12,3 +12,6 @@ tools/
 node_modules/
 .claude/
 dist/
+
+# note記事の下書き（公開しない）
+レポート/

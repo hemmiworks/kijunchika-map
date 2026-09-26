@@ -141,22 +141,6 @@ footer{margin-top:auto;font-size:11px;color:var(--faint);line-height:1.55}
         <p class="hint" id="modeHint"></p>
       </div>
       <div>
-        <p class="label">集計単位</p>
-        <div class="seg" role="group" aria-label="集計単位">
-          <button id="v-pt" aria-pressed="true">地点</button>
-          <button id="v-pref" aria-pressed="false">都道府県（中央値）</button>
-        </div>
-      </div>
-      <div id="bmWrap" hidden>
-        <p class="label">背景地図（地理院タイル）</p>
-        <div class="seg" role="group" aria-label="背景地図">
-          <button id="b-pale" aria-pressed="true">淡色</button>
-          <button id="b-std" aria-pressed="false">標準</button>
-          <button id="b-photo" aria-pressed="false">写真</button>
-          <button id="b-none" aria-pressed="false">なし</button>
-        </div>
-      </div>
-      <div>
         <p class="label">用途区分</p>
         <div class="chips" id="uses"></div>
       </div>
@@ -180,7 +164,7 @@ footer{margin-top:auto;font-size:11px;color:var(--faint);line-height:1.55}
     </section>
 
     <footer>
-      出典：「国土数値情報（都道府県地価調査データ）」（国土交通省）を加工して作成。行政界：国土地理院「地球地図日本」（第2.2版）を加工して作成。<span id="bmCredit" hidden>背景：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）。</span>地図描画：<a href="https://github.com/maplibre/maplibre-gl-js/blob/main/LICENSE.txt" target="_blank" rel="noopener">MapLibre GL JS</a>（BSD-3-Clause）。<br><br>この地図は公表データを個人が加工したもので、国や都道府県の公式統計ではありません。基準地価は各基準地の標準的な価格で、実際の取引価格や個別の土地の評価額を示すものではありません。平均・中央値・3年平均はこの地図独自の集計で、公表値とは集計方法が異なります。地点番号は略記です。
+      出典：「国土数値情報（都道府県地価調査データ）」（国土交通省）を加工して作成。行政界：国土地理院「地球地図日本」（第2.2版）を加工して作成。<span id="bmCredit" hidden>背景：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）。</span>地図描画：<a href="https://github.com/maplibre/maplibre-gl-js/blob/main/LICENSE.txt" target="_blank" rel="noopener">MapLibre GL JS</a>（BSD-3-Clause）。<br><br>国土交通省の公表データをもとに作成しています。平均・中央値・3年平均はこの地図独自の集計で、国の公表値とは集計方法が異なります。基準地価は各基準地の標準的な価格で、実際の取引価格や個別の土地の評価額を示すものではありません。地点番号は略記です。
     </footer>
   </aside>
   <div id="map">
@@ -228,7 +212,7 @@ function pct(c){ const s=(c>0?"+":c<0?"−":"±")+Math.abs(c).toFixed(1)+"%"; re
 const cls = c => c>0?"up":c<0?"down":"";
 
 // ---- state ----
-const st = { bm: BASEMAP?"pale":"none", mode:"chg", view:"pt", uses:new Set([0,5,9,3,20,10]), rank:"price", sel:-1 };
+const st = { mode:"chg", uses:new Set([0,5,9,3,20,10]), rank:"price", sel:-1 };
 
 // ---- colors ----
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -242,15 +226,6 @@ function priceColors(){ return isDark()
   ? ["#1f2e5c","#27508f","#1f7fb0","#23a6b2","#5cc79e","#aee07a","#f4ef6a","#fffbd2"]
   : ["#d4ecd6","#9fd6c1","#5bbcc3","#2b93bf","#2366a8","#26398f","#241a66","#12062e"]; }
 function ramp(stops, cols, key){ const e=["interpolate",["linear"],key]; stops.forEach((s,k)=>e.push(s,cols[k])); return e; }
-function colorFor(v, stops, cols){
-  if(v<=stops[0]) return cols[0];
-  for(let k=1;k<stops.length;k++) if(v<=stops[k]){
-    const t=(v-stops[k-1])/(stops[k]-stops[k-1]); return mix(cols[k-1],cols[k],t);
-  }
-  return cols[cols.length-1];
-}
-function mix(a,b,t){ const p=h=>[1,3,5].map(k=>parseInt(h.slice(k,k+2),16)); const A=p(a),B=p(b);
-  return "#"+A.map((x,k)=>Math.round(x+(B[k]-x)*t).toString(16).padStart(2,"0")).join(""); }
 
 // ---- GeoJSON for points ----
 const ptGeo = {type:"FeatureCollection",features:new Array(N)};
@@ -277,20 +252,17 @@ map.on("load",()=>{
   ready=true;
   document.getElementById("loading").remove();
   map.fitBounds(HOME,{padding:20,animate:false});
-  map.addSource("pref",{type:"geojson",data:PREF_GEO,promoteId:"pref"});
+  map.addSource("pref",{type:"geojson",data:PREF_GEO});
   map.addSource("muni",{type:"geojson",data:MUNI_LINES});
   map.addSource("pts",{type:"geojson",data:ptGeo});
   map.addSource("sel",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
   map.addLayer({id:"land",type:"fill",source:"pref",paint:{"fill-color":css("--land")}});
-  if(BASEMAP) for(const [id,ext,mz] of GSI){
-    map.addSource("gsi-"+id,{type:"raster",tiles:[`https://cyberjapandata.gsi.go.jp/xyz/${id}/{z}/{x}/{y}.${ext}`],tileSize:256,minzoom:2,maxzoom:mz});
-    map.addLayer({id:"gsi-"+id,type:"raster",source:"gsi-"+id,layout:{visibility:"none"}});
+  if(BASEMAP){ // 背景：地理院タイル（淡色地図）
+    map.addSource("gsi",{type:"raster",tiles:["https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png"],tileSize:256,minzoom:2,maxzoom:18});
+    map.addLayer({id:"gsi",type:"raster",source:"gsi"});
   }
-  map.addLayer({id:"choro",type:"fill",source:"pref",layout:{visibility:"none"},
-    paint:{"fill-color":["coalesce",["feature-state","col"],css("--land")],"fill-opacity":.92}});
   map.addLayer({id:"muni",type:"line",source:"muni",minzoom:6,paint:{"line-color":css("--muni-line"),"line-width":.7}});
   map.addLayer({id:"prefline",type:"line",source:"pref",paint:{"line-color":css("--pref-line"),"line-width":["interpolate",["linear"],["zoom"],4,.5,9,1.4]}});
-  map.addLayer({id:"prefhover",type:"line",source:"pref",paint:{"line-color":css("--sel"),"line-width":["case",["boolean",["feature-state","hover"],false],2,0]}});
   map.addLayer({id:"pts",type:"circle",source:"pts",
     layout:{"circle-sort-key":["get","k"]},
     paint:{"circle-radius":["interpolate",["linear"],["zoom"],4,1.6,7,3,10,5.5,14,8],
@@ -302,23 +274,15 @@ map.on("load",()=>{
   bindMap();
 });
 
-const GSI=[["pale","png",18],["std","png",18],["seamlessphoto","jpg",18]];
-const BM_ID={pale:"pale",std:"std",photo:"seamlessphoto"};
 function applyBasemap(){
   if(!ready || !BASEMAP) return;
-  const on=st.bm!=="none", dark=isDark();
-  for(const [id] of GSI){
-    const vis = BM_ID[st.bm]===id;
-    map.setLayoutProperty("gsi-"+id,"visibility",vis?"visible":"none");
-    if(id!=="seamlessphoto"){ // 暗い画面では淡色・標準の明度を反転して沈める
-      map.setPaintProperty("gsi-"+id,"raster-brightness-min",dark?.9:0);
-      map.setPaintProperty("gsi-"+id,"raster-brightness-max",dark?.08:1);
-      map.setPaintProperty("gsi-"+id,"raster-saturation",dark?-.6:0);
-    }
-  }
-  map.setLayoutProperty("land","visibility",on?"none":"visible");
-  map.setLayoutProperty("muni","visibility",on?"none":"visible");
-  map.setPaintProperty("prefline","line-opacity",st.bm==="photo"?.9:on?.6:1);
+  const dark=isDark(); // 暗い画面では淡色地図の明度を反転して沈める
+  map.setPaintProperty("gsi","raster-brightness-min",dark?.9:0);
+  map.setPaintProperty("gsi","raster-brightness-max",dark?.08:1);
+  map.setPaintProperty("gsi","raster-saturation",dark?-.6:0);
+  map.setLayoutProperty("land","visibility","none");
+  map.setLayoutProperty("muni","visibility","none");
+  map.setPaintProperty("prefline","line-opacity",.6);
 }
 function applyTheme(){
   if(!ready) return;
@@ -326,10 +290,8 @@ function applyTheme(){
   map.setPaintProperty("land","fill-color",css("--land"));
   map.setPaintProperty("muni","line-color",css("--muni-line"));
   map.setPaintProperty("prefline","line-color",css("--pref-line"));
-  map.setPaintProperty("prefhover","line-color",css("--sel"));
   map.setPaintProperty("pts","circle-stroke-color",css("--pt-stroke"));
   map.setPaintProperty("selring","circle-stroke-color",css("--sel"));
-  map.setPaintProperty("choro","fill-color",["coalesce",["feature-state","col"],css("--land")]);
   applyBasemap();
   applyAll();
 }
@@ -345,9 +307,6 @@ function applyAll(){
       : ramp(PRICE_STOPS,priceColors(),["get","lp"]));
     map.setPaintProperty("pts","circle-opacity", is3() ? ["case",["get","h3"],1,.35] : 1);
     map.setLayoutProperty("pts","circle-sort-key", st.mode==="chg"?["get","k"]:is3()?["get","k3"]:["get","lp"]);
-    map.setLayoutProperty("pts","visibility", st.view==="pt"?"visible":"none");
-    map.setLayoutProperty("choro","visibility", st.view==="pref"?"visible":"none");
-    if(st.view==="pref") paintPrefs();
   }
   document.getElementById("modeHint").textContent = st.mode==="chg" ? `${YN-1}年→${YN}年の1年間の変動率（公表値）`
     : is3() ? `${YN-3}年→${YN}年の3年間を年率に直した変動率。${YN-3}年以降毎年調査されている地点のみ（灰色は対象外）`
@@ -356,27 +315,12 @@ function applyAll(){
   if(st.sel>=0) renderDetail();
 }
 
-// ---- prefecture aggregation ----
 function median(a){ if(!a.length) return null; a=a.slice().sort((x,y)=>x-y); const m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
-let prefAgg = {};
-function aggPrefs(){
-  const by={};
-  for(let i=0;i<N;i++){ if(!st.uses.has(D.u[i])) continue; const p=pc(i); (by[p] ||= {c:[],p:[],n:0}); by[p].n++; by[p].p.push(D.p[i]); if(hasR(i)) by[p].c.push(rate(i)); }
-  prefAgg={}; for(const p in by) prefAgg[p]={n:by[p].n, c:median(by[p].c), p:median(by[p].p)};
-}
-function paintPrefs(){
-  aggPrefs();
-  const cc=chgColors(), pcol=priceColors();
-  for(const f of PREF_GEO.features){ const p=f.properties.pref, a=prefAgg[p];
-    const col = !a ? null : st.mode!=="price" ? (a.c==null?null:colorFor(a.c,CHG_STOPS,cc)) : colorFor(Math.log10(a.p),PRICE_STOPS,pcol);
-    map.setFeatureState({source:"pref",id:p},{col});
-  }
-}
 
 // ---- legend ----
 function renderLegend(){
   const el=document.getElementById("legend");
-  const agg = st.view==="pref" ? "（都道府県の中央値）" : "";
+  const agg = "";
   if(st.mode!=="price"){
     const cols=chgColors();
     el.innerHTML=`<div class="t">${RATE_NAME()}${agg}</div>`+swatches(cols,["−5","−2","−0.5","0","+0.5","+2","+5","+10","+20%"]);
@@ -472,7 +416,7 @@ function select(i,fly){
   st.sel=i; renderDetail();
   if(map.getSource("sel")) map.getSource("sel").setData({type:"FeatureCollection",features:i<0?[]:[{type:"Feature",geometry:{type:"Point",coordinates:[D.x[i],D.y[i]]},properties:{}}]});
   if(i>=0){
-    if(fly){ if(st.view!=="pt") setView("pt"); if(!st.uses.has(D.u[i])){ st.uses.add(D.u[i]); renderUses(); applyAll(); }
+    if(fly){ if(!st.uses.has(D.u[i])){ st.uses.add(D.u[i]); renderUses(); applyAll(); }
       map.flyTo({center:[D.x[i],D.y[i]],zoom:Math.max(map.getZoom(),13),essential:true,duration:matchMedia("(prefers-reduced-motion: reduce)").matches?0:1400}); }
     document.getElementById("side").scrollTo({top:0,behavior:"smooth"});
     if(innerWidth<=760 && !fly) document.getElementById("detailWrap").scrollIntoView({behavior:"smooth",block:"start"});
@@ -487,14 +431,6 @@ function bindMap(){
     tip.innerHTML=`<b>${code(i)}</b> ${USE_NAMES[D.u[i]]}<span class="num">${yen(D.p[i])}円</span><span class="num ${cont[i]?cls(D.c[i]):""}">${cont[i]?pct(D.c[i]):"新規"}</span>${isNaN(C3[i])?"":`<span class="num ${cls(C3[i])}">3年 ${pct(C3[i])}</span>`}`; });
   map.on("mouseleave","pts",()=>{ map.getCanvas().style.cursor=""; tip.hidden=true; });
   map.on("click","pts",e=>{ const f=e.features.sort((a,b)=>b.properties.k-a.properties.k)[0]; select(f.properties.i,false); });
-  let hov=null;
-  map.on("mousemove","choro",e=>{ const p=e.features[0].properties.pref; if(hov!==p){ if(hov) map.setFeatureState({source:"pref",id:hov},{hover:false}); hov=p; map.setFeatureState({source:"pref",id:p},{hover:true}); }
-    const a=prefAgg[p]; tip.hidden=false; tip.style.left=e.point.x+"px"; tip.style.top=e.point.y+"px";
-    tip.innerHTML = a ? `<b>${D.prefName[p]}</b><span class="num">${a.n}地点</span><span class="num ${cls(a.c)}">${a.c==null?"—":pct(a.c)}</span><span class="num">${yen(Math.round(a.p))}円</span>` : `<b>${D.prefName[p]}</b> 該当地点なし`; });
-  map.on("mouseleave","choro",()=>{ if(hov) map.setFeatureState({source:"pref",id:hov},{hover:false}); hov=null; tip.hidden=true; });
-  map.on("click","choro",e=>{ const f=e.features[0]; const b=new maplibregl.LngLatBounds();
-    const walk=c=>typeof c[0]==="number"?b.extend(c):c.forEach(walk); walk(f.geometry.coordinates);
-    setView("pt"); map.fitBounds(b,{padding:30,maxZoom:9}); });
 }
 
 // ---- controls ----
@@ -507,13 +443,9 @@ document.getElementById("uses").addEventListener("click",e=>{ const b=e.target.c
   if(st.uses.has(u) && st.uses.size===1) return; st.uses.has(u)?st.uses.delete(u):st.uses.add(u); renderUses(); applyAll(); });
 function segs(ids,key,fn){ ids.forEach(([id,val])=>document.getElementById(id).addEventListener("click",()=>{ fn(val); })); }
 function press(ids,val){ ids.forEach(([id,v])=>document.getElementById(id).setAttribute("aria-pressed",v===val)); }
-const MODE=[["m-chg","chg"],["m-c3","c3"],["m-price","price"]], VIEW=[["v-pt","pt"],["v-pref","pref"]], RANK=[["r-price","price"],["r-up","up"],["r-down","down"]];
-function setView(v){ st.view=v; press(VIEW,v); applyAll(); }
+const MODE=[["m-chg","chg"],["m-c3","c3"],["m-price","price"]], RANK=[["r-price","price"],["r-up","up"],["r-down","down"]];
 segs(MODE,"mode",v=>{ st.mode=v; press(MODE,v); applyAll(); });
-segs(VIEW,"view",setView);
-const BM=[["b-pale","pale"],["b-std","std"],["b-photo","photo"],["b-none","none"]];
-if(BASEMAP){ document.getElementById("bmWrap").hidden=false; document.getElementById("bmCredit").hidden=false;
-  segs(BM,"bm",v=>{ st.bm=v; press(BM,v); applyBasemap(); }); }
+if(BASEMAP) document.getElementById("bmCredit").hidden=false;
 segs(RANK,"rank",v=>{ st.rank=v; press(RANK,v); renderRank(); });
 
 document.getElementById("total").textContent=yen(N);
